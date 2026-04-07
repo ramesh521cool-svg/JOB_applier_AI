@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: job-applier-ai
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: npm install && npx playwright install chromium --with-deps
+    startCommand: node server.js
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: HEADLESS
+        value: "true"
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "3002"

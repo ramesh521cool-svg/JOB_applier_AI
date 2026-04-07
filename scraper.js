@@ -32,12 +32,14 @@ function log(sessionId, level, message) {
 
 // ---------- Launch browser with persistent profile ----------
 async function launchBrowser() {
+  const isHeadless = process.env.HEADLESS === "true" || process.env.RENDER === "true";
   return chromium.launchPersistentContext(BROWSER_PROFILE, {
-    headless: false,
+    headless: isHeadless,
     args: [
       "--no-sandbox",
       "--disable-blink-features=AutomationControlled",
       "--disable-infobars",
+      ...(isHeadless ? ["--disable-gpu", "--disable-dev-shm-usage"] : []),
     ],
     userAgent:
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
