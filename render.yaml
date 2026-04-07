@@ -4,7 +4,7 @@ services:
     env: node
     region: oregon
     plan: free
-    buildCommand: npm install && npx playwright install chromium --with-deps
+    buildCommand: npm install && npx playwright install --with-deps chromium
     startCommand: node server.js
     envVars:
       - key: ANTHROPIC_API_KEY
@@ -15,3 +15,5 @@ services:
         value: production
       - key: PORT
         value: "3002"
+      - key: PLAYWRIGHT_BROWSERS_PATH
+        value: "/opt/render/.cache/ms-playwright"

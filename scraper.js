@@ -31,23 +31,54 @@ function log(sessionId, level, message) {
 }
 
 // ---------- Launch browser with persistent profile ----------
+const IS_HEADLESS = process.env.HEADLESS === "true" || process.env.RENDER === "true" || process.env.NODE_ENV === "production";
+
+const BROWSER_ARGS = [
+  "--no-sandbox",
+  "--disable-setuid-sandbox",
+  "--disable-blink-features=AutomationControlled",
+  "--disable-infobars",
+  "--disable-gpu",
+  "--disable-dev-shm-usage",
+  "--disable-extensions",
+  "--no-first-run",
+  "--no-zygote",
+  "--single-process",
+  "--disable-background-networking",
+  "--disable-default-apps",
+  "--mute-audio",
+];
+
 async function launchBrowser() {
-  const isHeadless = process.env.HEADLESS === "true" || process.env.RENDER === "true";
-  return chromium.launchPersistentContext(BROWSER_PROFILE, {
-    headless: isHeadless,
-    args: [
-      "--no-sandbox",
-      "--disable-blink-features=AutomationControlled",
-      "--disable-infobars",
-      ...(isHeadless ? ["--disable-gpu", "--disable-dev-shm-usage"] : []),
-    ],
-    userAgent:
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
-      "(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-  });
+  if (IS_HEADLESS) {
+    // On Render / production: use regular launch (persistent profile is ephemeral anyway)
+    const browser = await chromium.launch({
+      headless: true,
+      args: BROWSER_ARGS,
+    });
+    return browser;
+  } else {
+    // Local dev: use persistent context so LinkedIn stays logged in
+    return chromium.launchPersistentContext(BROWSER_PROFILE, {
+      headless: false,
+      args: ["--no-sandbox", "--disable-blink-features=AutomationControlled", "--disable-infobars"],
+      userAgent:
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+        "(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    });
+  }
 }
 
 async function getPage(ctx) {
+  // chromium.launch() returns a Browser; launchPersistentContext returns BrowserContext
+  if (IS_HEADLESS) {
+    const context = await ctx.newContext({
+      userAgent:
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+        "(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    });
+    return context.newPage();
+  }
   const pages = ctx.pages();
   return pages.length > 0 ? pages[0] : ctx.newPage();
 }
