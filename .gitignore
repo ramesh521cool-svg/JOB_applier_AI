@@ -1,0 +1,17 @@
+node_modules/
+.env
+*.log
+
+# Browser persistent profile (contains LinkedIn session cookies)
+.browser-profile/
+
+# Debug screenshots & HTML dumps
+debug/
+
+# Local data files (contain personal info)
+data_profile.json
+data_applications.json
+data_sessions.json
+
+# Keep preferences as example but not actual data
+data_preferences.json

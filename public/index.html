@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Job Applier AI</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f172a;--surface:#1e293b;--s2:#273548;--border:#334155;
+  --accent:#6366f1;--a2:#818cf8;--green:#22c55e;--yellow:#eab308;
+  --red:#ef4444;--blue:#38bdf8;--text:#e2e8f0;--muted:#94a3b8;
+}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column}
+
+/* ── HEADER ── */
+header{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+.logo{font-size:18px;font-weight:700;background:linear-gradient(135deg,var(--accent),var(--a2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.tagline{color:var(--muted);font-size:11px}
+#statusBadge{margin-left:auto;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;background:#1e3a2f;color:var(--green);border:1px solid #16a34a}
+#statusBadge.busy{background:#1e1b4b;color:var(--a2);border-color:var(--accent);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+
+/* ── LAYOUT ── */
+.app{display:grid;grid-template-columns:300px 1fr;flex:1;overflow:hidden;height:calc(100vh - 49px)}
+
+/* ── LEFT PANEL ── */
+.panel{background:var(--surface);border-right:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column}
+.tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0}
+.tab{flex:1;padding:10px 4px;text-align:center;font-size:10px;font-weight:700;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;text-transform:uppercase;letter-spacing:.6px;transition:.15s}
+.tab.active{color:var(--a2);border-color:var(--accent)}
+.tc{display:none;padding:14px;overflow-y:auto}
+.tc.active{display:block}
+
+/* ── FORM ── */
+.sec{margin-bottom:16px}
+.sec-title{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:7px}
+label.lbl{display:block;font-size:11px;color:var(--muted);margin-bottom:3px}
+input,textarea,select{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:6px;font-size:12px;outline:none;transition:.15s;font-family:inherit}
+input:focus,textarea:focus,select:focus{border-color:var(--accent)}
+textarea{resize:vertical;min-height:65px}
+.ig{margin-bottom:9px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.chk-group{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.chk{display:flex;align-items:center;gap:6px;background:var(--bg);padding:6px 8px;border-radius:6px;border:1px solid var(--border);font-size:11px;cursor:pointer}
+.chk input[type=checkbox]{width:auto;accent-color:var(--accent)}
+
+/* ── TAG INPUT ── */
+.tag-wrap{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:4px 8px;display:flex;flex-wrap:wrap;gap:4px;min-height:34px;align-items:center;cursor:text}
+.tag-wrap:focus-within{border-color:var(--accent)}
+.tag{background:var(--s2);color:var(--a2);padding:2px 6px;border-radius:4px;font-size:11px;display:flex;align-items:center;gap:3px}
+.tag button{background:none;border:none;color:var(--muted);cursor:pointer;font-size:12px;line-height:1}
+.tag-wrap input{background:none;border:none;outline:none;color:var(--text);font-size:12px;flex:1;min-width:70px}
+
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;transition:.15s;white-space:nowrap}
+.btn:disabled{opacity:.4;cursor:not-allowed!important;transform:none!important}
+.btn-primary{background:var(--accent);color:#fff}.btn-primary:hover:not(:disabled){background:#4f46e5}
+.btn-blue{background:#0284c7;color:#fff}.btn-blue:hover:not(:disabled){background:#0369a1}
+.btn-green{background:#16a34a;color:#fff}.btn-green:hover:not(:disabled){background:#15803d}
+.btn-red{background:#dc2626;color:#fff}.btn-red:hover:not(:disabled){background:#b91c1c}
+.btn-outline{background:transparent;color:var(--a2);border:1px solid var(--accent);font-size:11px;padding:5px 10px}
+.btn-outline:hover:not(:disabled){background:rgba(99,102,241,.1)}
+.btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border);font-size:11px;padding:5px 9px}
+.btn-ghost:hover:not(:disabled){border-color:var(--muted);color:var(--text)}
+.btn-full{width:100%;justify-content:center;margin-top:6px;padding:10px}
+.btn-xs{padding:4px 8px;font-size:10px;border-radius:4px}
+
+/* ── UPLOAD ZONE ── */
+.upload-zone{border:2px dashed var(--border);border-radius:6px;padding:14px;text-align:center;cursor:pointer;color:var(--muted);transition:.15s}
+.upload-zone:hover{border-color:var(--accent);color:var(--a2)}
+.upload-zone input{display:none}
+.file-ok{display:none;margin-top:6px;font-size:11px;color:var(--green);background:var(--s2);padding:6px 9px;border-radius:5px}
+
+/* ── CRED BOX ── */
+.cred-box{background:rgba(99,102,241,.07);border:1px solid rgba(99,102,241,.25);border-radius:7px;padding:12px;margin-bottom:12px}
+.warn{font-size:10px;color:var(--yellow);margin-top:6px}
+hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
+
+/* ── MAIN ── */
+.main{display:flex;flex-direction:column;overflow:hidden}
+
+/* ── STATS ── */
+.stats-bar{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;padding:12px;border-bottom:1px solid var(--border);flex-shrink:0}
+.sc{background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center}
+.sc .n{font-size:22px;font-weight:700}.sc .l{font-size:9px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:.5px}
+.sc-found .n{color:var(--blue)}.sc-applied .n{color:var(--green)}.sc-skipped .n{color:var(--yellow)}.sc-failed .n{color:var(--red)}.sc-total .n{color:var(--a2)}
+
+/* ── CONTENT ── */
+.content-area{display:grid;grid-template-rows:1fr 185px;flex:1;overflow:hidden}
+
+/* ── JOBS ── */
+.jobs-panel{overflow-y:auto;padding:12px}
+.jobs-hdr{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.jobs-title{font-size:13px;font-weight:700}
+.filters{display:flex;gap:4px;margin-left:auto}
+.fb{padding:3px 10px;border-radius:14px;font-size:10px;font-weight:700;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;transition:.15s}
+.fb.on{border-color:var(--accent);color:var(--a2);background:rgba(99,102,241,.1)}
+
+table.jt{width:100%;border-collapse:collapse;font-size:12px}
+table.jt th{text-align:left;padding:6px 8px;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:1}
+table.jt td{padding:8px 8px;border-bottom:1px solid rgba(51,65,85,.35);vertical-align:top}
+table.jt tr.job-row:hover td{background:rgba(99,102,241,.04)}
+table.jt tr.expand-row td{padding:0;border-bottom:1px solid var(--border)}
+
+.job-link{color:var(--a2);text-decoration:none;font-weight:600}
+.job-link:hover{text-decoration:underline}
+.co-loc{color:var(--muted);font-size:10px;margin-top:2px}
+.chip{display:inline-flex;align-items:center;padding:2px 7px;border-radius:9px;font-size:9px;font-weight:700;text-transform:uppercase;margin-right:3px}
+.chip-found{background:#1a2c3b;color:var(--blue)}
+.chip-applied{background:#1a3326;color:var(--green)}
+.chip-skipped{background:#332b00;color:var(--yellow)}
+.chip-failed{background:#3b1212;color:var(--red)}
+.chip-tailored{background:#1e1b4b;color:var(--a2)}
+.chip-pending{background:var(--s2);color:var(--muted)}
+.sp{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;font-size:10px;font-weight:700}
+.sp-hi{background:#1a3326;color:var(--green)}.sp-mid{background:#332b00;color:var(--yellow)}
+.sp-lo{background:#3b1212;color:var(--red)}.sp-none{background:var(--s2);color:var(--muted)}
+
+/* ── EXPAND PANEL ── */
+.expand-panel{background:var(--bg);padding:12px 14px;border-left:3px solid var(--accent)}
+.ep-tabs{display:flex;gap:6px;margin-bottom:10px}
+.ep-tab{padding:4px 10px;border-radius:5px;font-size:11px;cursor:pointer;color:var(--muted);border:1px solid var(--border);background:transparent}
+.ep-tab.on{background:var(--s2);color:var(--text);border-color:var(--a2)}
+.ep-body{font-size:11px;line-height:1.65;color:var(--muted);white-space:pre-wrap;max-height:200px;overflow-y:auto;background:var(--s2);padding:10px;border-radius:6px}
+.ep-actions{display:flex;gap:6px;margin-top:9px}
+
+/* ── LOG ── */
+.log-panel{border-top:1px solid var(--border);background:var(--bg);display:flex;flex-direction:column;overflow:hidden}
+.log-hdr{padding:6px 12px;border-bottom:1px solid var(--border);font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;display:flex;align-items:center;gap:6px;flex-shrink:0}
+.log-dot{width:6px;height:6px;border-radius:50%;background:var(--muted)}
+.log-dot.live{background:var(--green);box-shadow:0 0 4px var(--green);animation:pulse 1.5s infinite}
+.log-body{flex:1;overflow-y:auto;padding:5px 12px;font-family:monospace;font-size:11px;line-height:1.7}
+.le{display:flex;gap:7px}
+.lt{color:var(--muted);flex-shrink:0;font-size:10px;padding-top:1px}
+.le-info .lm{color:var(--text)}.le-success .lm{color:var(--green)}.le-warn .lm{color:var(--yellow)}.le-error .lm{color:var(--red)}
+
+/* ── MODAL ── */
+.mo{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:1000;align-items:center;justify-content:center}
+.mo.open{display:flex}
+.md{background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:22px;max-width:580px;width:94%;max-height:88vh;overflow-y:auto}
+.md h2{font-size:16px;margin-bottom:3px}
+.md-sub{color:var(--muted);font-size:11px;margin-bottom:14px}
+.md-acts{display:flex;gap:7px;justify-content:flex-end;margin-top:14px}
+
+/* empty */
+.empty{text-align:center;padding:46px 20px;color:var(--muted)}
+.empty .icon{font-size:42px;margin-bottom:9px}
+::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spin{animation:spin .8s linear infinite;display:inline-block}
+@keyframes slideIn{from{transform:translateY(14px);opacity:0}to{transform:translateY(0);opacity:1}}
+</style>
+</head>
+<body>
+
+<header>
+  <span style="font-size:20px">🤖</span>
+  <div><div class="logo">Job Applier AI</div><div class="tagline">Search → Tailor → Apply with Claude AI</div></div>
+  <span id="statusBadge">● Idle</span>
+</header>
+
+<div class="app">
+
+<!-- ══ LEFT PANEL ══════════════════════════════════════════════════════ -->
+<div class="panel">
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('profile')">Profile</div>
+    <div class="tab" onclick="switchTab('prefs')">Prefs</div>
+    <div class="tab" onclick="switchTab('run')">Run</div>
+  </div>
+
+  <!-- PROFILE -->
+  <div class="tc active" id="tc-profile">
+    <div class="sec">
+      <div class="sec-title">Personal</div>
+      <div class="ig"><label class="lbl">Full Name</label><input id="p_full_name" placeholder="Jane Smith"/></div>
+      <div class="g2">
+        <div class="ig"><label class="lbl">Email</label><input id="p_email" type="email" placeholder="jane@example.com"/></div>
+        <div class="ig"><label class="lbl">Phone</label><input id="p_phone" placeholder="+1 555 0000"/></div>
+      </div>
+      <div class="ig"><label class="lbl">Location</label><input id="p_location" placeholder="New York, NY"/></div>
+      <div class="ig"><label class="lbl">LinkedIn URL</label><input id="p_linkedin_url" placeholder="https://linkedin.com/in/..."/></div>
+      <div class="ig"><label class="lbl">GitHub / Portfolio</label><input id="p_github_url" placeholder="https://github.com/..."/></div>
+    </div>
+    <div class="sec">
+      <div class="sec-title">Summary</div>
+      <textarea id="p_summary" rows="3" placeholder="Brief professional summary..."></textarea>
+    </div>
+    <div class="sec">
+      <div class="sec-title">Resume <span style="color:var(--red);font-size:10px">* Required for tailoring</span></div>
+      <label class="upload-zone" id="resumeZone">
+        <input type="file" id="resumeFile" accept=".pdf,.docx,.txt" onchange="uploadResume(this.files[0])"/>
+        <div style="font-size:24px;margin-bottom:4px">📄</div>
+        <div style="font-size:12px">Click or drag to upload</div>
+        <div style="font-size:10px;margin-top:2px">PDF · DOCX · TXT</div>
+      </label>
+      <div class="file-ok" id="fileOk"></div>
+      <div class="ig" style="margin-top:8px"><label class="lbl">Or paste resume text</label>
+        <textarea id="p_resume_text" rows="6" placeholder="Paste full resume..."></textarea>
+      </div>
+    </div>
+    <button class="btn btn-primary btn-full" onclick="saveProfile()">💾 Save Profile</button>
+  </div>
+
+  <!-- PREFS -->
+  <div class="tc" id="tc-prefs">
+    <div class="sec"><div class="sec-title">Job Titles (Enter)</div>
+      <div class="tag-wrap" id="titlesWrap"><input id="titlesInput" placeholder="e.g. Software Engineer" onkeydown="handleTag(event,'titles')"/></div>
+    </div>
+    <div class="sec"><div class="sec-title">Locations (Enter)</div>
+      <div class="tag-wrap" id="locsWrap"><input id="locsInput" placeholder="e.g. New York, NY" onkeydown="handleTag(event,'locs')"/></div>
+    </div>
+    <div class="sec"><div class="sec-title">Work Type</div>
+      <div class="chk-group">
+        <label class="chk"><input type="checkbox" id="pref_remote" checked/><span>🏠 Remote</span></label>
+        <label class="chk"><input type="checkbox" id="pref_hybrid" checked/><span>🔀 Hybrid</span></label>
+        <label class="chk"><input type="checkbox" id="pref_onsite"/><span>🏢 On-site</span></label>
+      </div>
+    </div>
+    <div class="sec"><div class="sec-title">Experience Level</div>
+      <div class="chk-group">
+        <label class="chk"><input type="checkbox" id="exp_entry"/><span>Entry</span></label>
+        <label class="chk"><input type="checkbox" id="exp_mid" checked/><span>Mid-Senior</span></label>
+        <label class="chk"><input type="checkbox" id="exp_assoc"/><span>Associate</span></label>
+        <label class="chk"><input type="checkbox" id="exp_dir"/><span>Director</span></label>
+      </div>
+    </div>
+    <div class="sec">
+      <div class="g2">
+        <div class="ig"><label class="lbl">Date Posted</label>
+          <select id="pref_date_posted"><option value="past_24h">Last 24h</option><option value="past_week" selected>Past Week</option><option value="past_month">Past Month</option></select>
+        </div>
+        <div class="ig"><label class="lbl">Max Jobs</label><input id="pref_max_applications" type="number" value="20" min="1" max="100"/></div>
+      </div>
+    </div>
+    <div class="sec"><div class="sec-title">Blacklist Companies</div>
+      <div class="tag-wrap" id="blkCompWrap"><input id="blkCompInput" placeholder="Company" onkeydown="handleTag(event,'blkComp')"/></div>
+    </div>
+    <div class="sec"><div class="sec-title">Blacklist Title Keywords</div>
+      <div class="tag-wrap" id="blkTitleWrap"><input id="blkTitleInput" placeholder="e.g. intern" onkeydown="handleTag(event,'blkTitle')"/></div>
+    </div>
+    <button class="btn btn-primary btn-full" onclick="savePrefs()">💾 Save Preferences</button>
+  </div>
+
+  <!-- RUN -->
+  <div class="tc" id="tc-run">
+    <div class="cred-box">
+      <div class="sec-title" style="margin-bottom:8px">🔐 LinkedIn Login</div>
+      <div class="ig"><label class="lbl">Email</label><input id="li_email" type="email" placeholder="you@email.com"/></div>
+      <div class="ig"><label class="lbl">Password</label><input id="li_password" type="password" placeholder="••••••••"/></div>
+      <div class="warn">⚠️ Only used in memory — never stored.</div>
+    </div>
+    <div style="background:var(--s2);border-radius:7px;padding:11px;margin-bottom:12px;font-size:11px;line-height:1.8;color:var(--muted)">
+      <b style="color:var(--text)">How it works:</b><br/>
+      1. <b>Search Jobs</b> → opens browser, finds matching jobs<br/>
+      2. <b>Tailor</b> button → Claude rewrites resume for the job<br/>
+      3. <b>Apply</b> button → browser submits LinkedIn Easy Apply<br/>
+      4. Status updates only after apply completes
+    </div>
+    <button class="btn btn-primary btn-full" id="searchBtn" onclick="startSearch()">🔍 Search Jobs</button>
+    <button class="btn btn-red btn-full" id="stopBtn" style="display:none;margin-top:6px" onclick="stopSession()">⏹ Stop</button>
+    <hr class="div"/>
+    <div class="sec-title">This Session</div>
+    <div class="g2" style="margin-top:7px">
+      <div style="background:var(--bg);padding:8px;border-radius:6px;text-align:center"><div style="font-size:18px;font-weight:700;color:var(--blue)" id="ss_found">0</div><div style="font-size:9px;color:var(--muted)">Found</div></div>
+      <div style="background:var(--bg);padding:8px;border-radius:6px;text-align:center"><div style="font-size:18px;font-weight:700;color:var(--green)" id="ss_applied">0</div><div style="font-size:9px;color:var(--muted)">Applied</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MAIN PANEL ══════════════════════════════════════════════════════ -->
+<div class="main">
+  <!-- Stats -->
+  <div class="stats-bar">
+    <div class="sc sc-found"><div class="n" id="st_found">0</div><div class="l">🔍 Found</div></div>
+    <div class="sc sc-total"><div class="n" id="st_total">0</div><div class="l">Total</div></div>
+    <div class="sc sc-applied"><div class="n" id="st_applied">0</div><div class="l">✅ Applied</div></div>
+    <div class="sc sc-skipped"><div class="n" id="st_skipped">0</div><div class="l">⏭ Skipped</div></div>
+    <div class="sc sc-failed"><div class="n" id="st_failed">0</div><div class="l">❌ Failed</div></div>
+  </div>
+
+  <div class="content-area">
+    <!-- Jobs -->
+    <div class="jobs-panel">
+      <div class="jobs-hdr">
+        <div class="jobs-title">Jobs</div>
+        <div class="filters">
+          <button class="fb on"  onclick="setFilter('all',this)">All</button>
+          <button class="fb"     onclick="setFilter('found',this)">Found</button>
+          <button class="fb"     onclick="setFilter('applied',this)">Applied</button>
+          <button class="fb"     onclick="setFilter('failed',this)">Failed</button>
+        </div>
+        <button class="btn btn-ghost btn-xs" onclick="loadJobs()" title="Refresh">↻</button>
+        <button class="btn btn-red btn-xs" onclick="clearAll()">🗑 Clear All</button>
+      </div>
+      <div id="jobsContainer">
+        <div class="empty"><div class="icon">🔍</div><div>Click <b>Search Jobs</b> in the Run tab to get started.</div></div>
+      </div>
+    </div>
+
+    <!-- Log -->
+    <div class="log-panel">
+      <div class="log-hdr">
+        <div class="log-dot" id="logDot"></div>
+        Live Log
+        <button class="btn btn-ghost btn-xs" style="margin-left:auto" onclick="clearLog()">Clear</button>
+      </div>
+      <div class="log-body" id="logBody">
+        <div class="le le-info"><span class="lt">--:--:--</span><span class="lm">Ready. Configure your profile and preferences, then click Search Jobs.</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- .app -->
+
+<!-- Hidden file input for Import Resume -->
+<input type="file" id="importResumeFile" accept=".pdf,.docx,.txt" style="display:none" onchange="handleImportFile(this)"/>
+
+<!-- ══ APPLY MODAL ══════════════════════════════════════════════════════ -->
+<div class="mo" id="applyModal">
+  <div class="md">
+    <h2 id="am_title">Apply to Job</h2>
+    <div class="md-sub" id="am_sub"></div>
+    <div class="ig">
+      <label class="lbl" style="display:flex;align-items:center;justify-content:space-between">
+        <span>Tailored Resume <span id="am_resume_badge" style="margin-left:6px;font-size:10px;color:var(--green)"></span></span>
+        <span style="font-size:10px;color:var(--muted)">Edit if needed before applying</span>
+      </label>
+      <textarea id="am_resume" rows="10" style="font-size:11px;line-height:1.5"></textarea>
+    </div>
+    <div class="ig">
+      <label class="lbl">Cover Letter <span style="font-size:10px;color:var(--muted)">(optional)</span></label>
+      <textarea id="am_cover" rows="4" style="font-size:11px"></textarea>
+    </div>
+    <div class="md-acts">
+      <button class="btn btn-ghost" onclick="document.getElementById('applyModal').classList.remove('open')">Cancel</button>
+      <a id="am_dl_txt"  class="btn btn-ghost" href="#" download style="display:none">⬇ TXT</a>
+      <a id="am_dl_docx" class="btn btn-ghost" href="#" download style="display:none">⬇ DOCX</a>
+      <button class="btn btn-green" id="am_confirm" onclick="confirmApply()">📨 Apply Now</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══ STATE ══════════════════════════════════════════════════════════════════
+const tags = { titles:[], locs:[], blkComp:[], blkTitle:[] };
+let sse = null, filter = 'all', applyJobId = null;
+let liEmail = '', liPass = '';
+let jobsCache = [];
+
+// ══ INIT ═══════════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', async () => {
+  await Promise.all([loadProfile(), loadPrefs(), loadStats(), loadJobs()]);
+  connectSSE();
+  // Resume drag-drop
+  const zone = document.getElementById('resumeZone');
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.style.borderColor = 'var(--accent)'; });
+  zone.addEventListener('dragleave', () => zone.style.borderColor = '');
+  zone.addEventListener('drop', e => { e.preventDefault(); zone.style.borderColor = ''; if (e.dataTransfer.files[0]) uploadResume(e.dataTransfer.files[0]); });
+});
+
+// ══ TABS ════════════════════════════════════════════════════════════════════
+function switchTab(n) {
+  document.querySelectorAll('.tab,.tc').forEach(el => el.classList.remove('active'));
+  const idx = ['profile','prefs','run'].indexOf(n);
+  document.querySelectorAll('.tab')[idx].classList.add('active');
+  document.getElementById('tc-' + n).classList.add('active');
+}
+
+// ══ PROFILE ════════════════════════════════════════════════════════════════
+async function loadProfile() {
+  const p = await fetch('/api/profile').then(r => r.json()).catch(() => ({}));
+  ['full_name','email','phone','location','linkedin_url','github_url','summary','resume_text'].forEach(k => {
+    const el = document.getElementById('p_' + k); if (el && p[k]) el.value = p[k];
+  });
+}
+async function saveProfile() {
+  const data = {};
+  ['full_name','email','phone','location','linkedin_url','github_url','summary','resume_text'].forEach(k => {
+    const el = document.getElementById('p_' + k); if (el) data[k] = el.value;
+  });
+  const j = await fetch('/api/profile', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data) }).then(r => r.json());
+  j.success ? toast('✅ Profile saved!') : toast('❌ ' + j.error, 'error');
+}
+async function uploadResume(file) {
+  if (!file) return;
+  const fo = document.getElementById('fileOk');
+  fo.style.display = 'block'; fo.textContent = '⏳ Uploading…';
+  const form = new FormData(); form.append('resume', file);
+  const j = await fetch('/api/profile/resume', { method:'POST', body:form }).then(r => r.json());
+  if (j.success) {
+    fo.textContent = '✅ ' + file.name;
+    document.getElementById('p_resume_text').value = j.preview + '…';
+    toast('✅ Resume uploaded and saved!');
+  } else { fo.textContent = '❌ Upload failed'; toast('❌ ' + j.error, 'error'); }
+}
+
+// ══ PREFS ═══════════════════════════════════════════════════════════════════
+async function loadPrefs() {
+  const p = await fetch('/api/preferences').then(r => r.json()).catch(() => ({}));
+  const parse = v => { try { return JSON.parse(v || '[]'); } catch { return []; } };
+  setTags('titles', parse(p.job_titles)); setTags('locs', parse(p.locations));
+  setTags('blkComp', parse(p.blacklist_companies)); setTags('blkTitle', parse(p.blacklist_titles));
+  if (p.remote   !== undefined) document.getElementById('pref_remote').checked = !!p.remote;
+  if (p.hybrid   !== undefined) document.getElementById('pref_hybrid').checked = !!p.hybrid;
+  if (p.onsite   !== undefined) document.getElementById('pref_onsite').checked = !!p.onsite;
+  const exp = parse(p.experience_levels);
+  document.getElementById('exp_entry').checked = exp.includes('entry level');
+  document.getElementById('exp_mid').checked   = exp.includes('mid-senior level');
+  document.getElementById('exp_assoc').checked = exp.includes('associate');
+  document.getElementById('exp_dir').checked   = exp.includes('director');
+  if (p.date_posted)         document.getElementById('pref_date_posted').value       = p.date_posted;
+  if (p.max_applications)    document.getElementById('pref_max_applications').value  = p.max_applications;
+}
+async function savePrefs() {
+  const exp = [];
+  if (document.getElementById('exp_entry').checked) exp.push('entry level');
+  if (document.getElementById('exp_mid').checked)   exp.push('mid-senior level');
+  if (document.getElementById('exp_assoc').checked) exp.push('associate');
+  if (document.getElementById('exp_dir').checked)   exp.push('director');
+  const data = {
+    job_titles: tags.titles, locations: tags.locs,
+    remote: document.getElementById('pref_remote').checked ? 1 : 0,
+    hybrid: document.getElementById('pref_hybrid').checked ? 1 : 0,
+    onsite: document.getElementById('pref_onsite').checked ? 1 : 0,
+    experience_levels: exp,
+    blacklist_companies: tags.blkComp, blacklist_titles: tags.blkTitle,
+    date_posted: document.getElementById('pref_date_posted').value,
+    max_applications: parseInt(document.getElementById('pref_max_applications').value) || 20,
+  };
+  const j = await fetch('/api/preferences', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data) }).then(r => r.json());
+  j.success ? toast('✅ Preferences saved!') : toast('❌ ' + j.error, 'error');
+}
+
+// ══ TAG INPUT ═══════════════════════════════════════════════════════════════
+const wrapMap = { titles:'titlesWrap', locs:'locsWrap', blkComp:'blkCompWrap', blkTitle:'blkTitleWrap' };
+function setTags(key, arr) { tags[key] = [...arr]; renderTags(key); }
+function renderTags(key) {
+  const wrap = document.getElementById(wrapMap[key]);
+  const inp  = wrap.querySelector('input');
+  wrap.querySelectorAll('.tag').forEach(t => t.remove());
+  tags[key].forEach((v, i) => {
+    const t = document.createElement('div'); t.className = 'tag';
+    t.innerHTML = `${esc(v)} <button onclick="removeTag('${key}',${i})">×</button>`;
+    wrap.insertBefore(t, inp);
+  });
+}
+function removeTag(key, i) { tags[key].splice(i,1); renderTags(key); }
+function handleTag(e, key) {
+  if (e.key==='Enter'||e.key===',') {
+    e.preventDefault();
+    const v = e.target.value.trim().replace(/,$/, '');
+    if (v && !tags[key].includes(v)) { tags[key].push(v); renderTags(key); }
+    e.target.value = '';
+  }
+}
+
+// ══ SEARCH ══════════════════════════════════════════════════════════════════
+async function startSearch() {
+  liEmail = document.getElementById('li_email').value.trim();
+  liPass  = document.getElementById('li_password').value;
+  if (!liEmail || !liPass) { toast('❌ Enter LinkedIn credentials in the Run tab', 'error'); switchTab('run'); return; }
+  const r = await fetch('/api/session/search', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ linkedinEmail: liEmail, linkedinPassword: liPass })
+  });
+  const j = await r.json();
+  if (r.ok) {
+    setBusy(true, 'Searching…');
+    addLog('info', '🔍 Search session started — browser opening…');
+    document.getElementById('ss_found').textContent = '0';
+  } else { toast('❌ ' + j.error, 'error'); }
+}
+async function stopSession() {
+  await fetch('/api/session/stop', { method:'POST' });
+  setBusy(false); toast('⏹ Stopped');
+}
+function setBusy(busy, label='') {
+  const badge = document.getElementById('statusBadge');
+  const sb = document.getElementById('searchBtn');
+  const stop = document.getElementById('stopBtn');
+  const dot = document.getElementById('logDot');
+  if (busy) {
+    badge.textContent = '● ' + (label || 'Running'); badge.className = 'busy';
+    sb.style.display = 'none'; stop.style.display = ''; dot.className = 'log-dot live';
+  } else {
+    badge.textContent = '● Idle'; badge.className = '';
+    sb.style.display = ''; stop.style.display = 'none'; dot.className = 'log-dot';
+  }
+}
+
+// ══ SSE ═════════════════════════════════════════════════════════════════════
+function connectSSE() {
+  if (sse) sse.close();
+  sse = new EventSource('/api/stream');
+
+  sse.addEventListener('log', e => {
+    const d = JSON.parse(e.data); addLog(d.level, d.message);
+  });
+
+  sse.addEventListener('status', e => {
+    const d = JSON.parse(e.data);
+    if (d.status === 'searching') { setBusy(true, 'Searching…'); }
+    else if (d.status === 'applying') { setBusy(true, 'Applying…'); }
+    else if (['search_complete','completed','stopped','idle'].includes(d.status)) {
+      setBusy(false);
+      if (d.status === 'search_complete')
+        addLog('success', `✅ Search done! Found ${d.jobsFound || 0} jobs. Click ✂️ Tailor on any job.`);
+      loadStats(); loadJobs();
+    }
+  });
+
+  sse.addEventListener('job_found', e => {
+    const d = JSON.parse(e.data);
+    const scoreStr = d.score > 0 ? ` [${d.score}/10]` : '';
+    addLog('info', `🔍 Found: ${d.job_title} @ ${d.company}${scoreStr}`);
+    const el = document.getElementById('ss_found');
+    el.textContent = parseInt(el.textContent || 0) + 1;
+    loadJobs();
+  });
+
+  // Import complete — update row inline
+  sse.addEventListener('tailor_complete', e => {
+    const d = JSON.parse(e.data);
+    addLog('success', `✅ Resume imported & cover letter generated for: ${d.id}`);
+    const job = jobsCache.find(j => j.id === d.id);
+    if (job) { job.tailored_resume = d.tailored_resume; job.cover_letter = d.cover_letter; }
+    updateJobRow(d.id);
+    toast('✅ Resume imported! Click 📨 Apply when ready.', 'success');
+    loadStats();
+  });
+
+  sse.addEventListener('tailor_error', e => {
+    const d = JSON.parse(e.data);
+    addLog('error', `❌ Import failed: ${d.error}`);
+    toast('❌ Import failed: ' + d.error, 'error');
+  });
+
+  // Apply result — status ONLY updates here
+  sse.addEventListener('application_update', e => {
+    const d = JSON.parse(e.data);
+    const icons = { applied:'✅', skipped:'⏭️', failed:'❌' };
+    addLog(d.status === 'applied' ? 'success' : 'warn', `${icons[d.status] || ''} ${d.status.toUpperCase()}`);
+    setBusy(false);
+    if (d.status === 'applied') {
+      const el = document.getElementById('ss_applied');
+      el.textContent = parseInt(el.textContent || 0) + 1;
+    }
+    const job = jobsCache.find(j => j.id === d.id);
+    if (job) job.status = d.status;
+    loadStats(); loadJobs();
+    toast(d.status === 'applied' ? '🎉 Application submitted!' : '❌ Apply failed — check the log', d.status === 'applied' ? 'success' : 'error');
+  });
+
+  sse.onerror = () => setTimeout(connectSSE, 3000);
+}
+
+// ══ LOG ═════════════════════════════════════════════════════════════════════
+function addLog(level, msg) {
+  const b = document.getElementById('logBody');
+  const t = new Date().toTimeString().slice(0,8);
+  const d = document.createElement('div');
+  d.className = 'le le-' + (level || 'info');
+  d.innerHTML = `<span class="lt">${t}</span><span class="lm">${esc(msg)}</span>`;
+  b.appendChild(d); b.scrollTop = b.scrollHeight;
+}
+function clearLog() { document.getElementById('logBody').innerHTML = ''; }
+
+// ══ STATS ════════════════════════════════════════════════════════════════════
+async function loadStats() {
+  const s = await fetch('/api/stats').then(r => r.json()).catch(() => ({}));
+  document.getElementById('st_total').textContent   = s.total   || 0;
+  document.getElementById('st_applied').textContent = s.applied || 0;
+  document.getElementById('st_skipped').textContent = s.skipped || 0;
+  document.getElementById('st_failed').textContent  = s.failed  || 0;
+  const found = (s.total||0) - (s.applied||0) - (s.skipped||0) - (s.failed||0);
+  document.getElementById('st_found').textContent = Math.max(0, found);
+}
+
+// ══ JOBS TABLE ═══════════════════════════════════════════════════════════════
+function setFilter(f, btn) {
+  filter = f;
+  document.querySelectorAll('.fb').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  renderJobs();
+}
+
+async function loadJobs() {
+  jobsCache = await fetch('/api/applications?limit=200').then(r => r.json()).catch(() => []);
+  renderJobs();
+}
+
+function renderJobs() {
+  const c = document.getElementById('jobsContainer');
+  const list = filter === 'all' ? jobsCache : jobsCache.filter(j => j.status === filter);
+
+  if (!list.length) {
+    c.innerHTML = `<div class="empty"><div class="icon">${filter==='all'?'🔍':'📭'}</div><div>${filter==='all'?'Click <b>Search Jobs</b> in the Run tab.':'No '+filter+' jobs yet.'}</div></div>`;
+    return;
+  }
+
+  const rows = list.map(a => buildJobRow(a)).join('');
+  c.innerHTML = `<table class="jt">
+    <thead><tr><th style="width:38%">Job</th><th>Score</th><th>Status</th><th>Actions</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+function buildJobRow(a) {
+  const sc = a.suitability_score || 0;
+  const scCls = sc >= 7 ? 'hi' : sc >= 5 ? 'mid' : sc > 0 ? 'lo' : 'none';
+  const hasTailored = !!a.tailored_resume;
+
+  // Always show all 3 action buttons + expand + delete
+  const tailorBtn  = `<button class="btn btn-blue btn-xs" id="tb_${a.id}" onclick="tailorJob('${a.id}')">✂️ Tailor</button>`;
+  const importBtn  = `<button class="btn btn-primary btn-xs" id="ib_${a.id}" onclick="importOptimized('${a.id}')">📥 Import Resume</button>`;
+  const applyBtn   = `<button class="btn btn-green btn-xs" id="ab_${a.id}" onclick="openApply('${a.id}')">📨 Apply</button>`;
+  const expandBtn  = `<button class="btn btn-ghost btn-xs" onclick="toggleExpand('${a.id}')" id="eb_${a.id}">👁</button>`;
+  const deleteBtn  = `<button class="btn btn-red btn-xs" onclick="deleteJob('${a.id}')" title="Delete">🗑</button>`;
+
+  return `<tr class="job-row" id="jr_${a.id}">
+    <td>
+      <a class="job-link" href="${esc(a.job_url||'#')}" target="_blank">${esc(a.job_title||'—')}</a>
+      <div class="co-loc">${esc(a.company||'')}${a.location?' · '+esc(a.location):''}</div>
+    </td>
+    <td><div class="sp sp-${scCls}">${sc > 0 ? sc : '—'}</div></td>
+    <td>
+      <span class="chip chip-${a.status}">${a.status}</span>
+      ${hasTailored ? '<br><span class="chip chip-tailored" style="margin-top:3px">✂️ tailored</span>' : ''}
+    </td>
+    <td>
+      <div style="display:flex;gap:4px;flex-wrap:wrap">
+        ${tailorBtn}${importBtn}${applyBtn}${expandBtn}${deleteBtn}
+      </div>
+    </td>
+  </tr>
+  <tr class="expand-row" id="er_${a.id}" style="display:none">
+    <td colspan="4">${buildExpand(a)}</td>
+  </tr>`;
+}
+
+function buildExpand(a) {
+  const tabs = [
+    a.tailored_resume ? ['✂️ Tailored Resume', 'tailored'] : null,
+    a.cover_letter    ? ['📝 Cover Letter', 'cover']       : null,
+    a.job_description ? ['📋 Job Description', 'desc']     : null,
+  ].filter(Boolean);
+  if (!tabs.length) {
+    return `<div class="expand-panel" style="color:var(--muted);font-size:12px">No additional data yet. Click ✂️ Tailor to generate a tailored resume.</div>`;
+  }
+  const firstKey = tabs[0][1];
+  const tabHtml = tabs.map(([lbl, key]) =>
+    `<button class="ep-tab ${key===firstKey?'on':''}" onclick="switchEpTab('${a.id}','${key}',this)">${lbl}</button>`
+  ).join('');
+  const content = {
+    tailored: a.tailored_resume || '',
+    cover:    a.cover_letter    || '',
+    desc:     a.job_description ? a.job_description.slice(0, 1500) + (a.job_description.length > 1500 ? '…' : '') : '',
+  };
+  return `<div class="expand-panel">
+    <div class="ep-tabs">${tabHtml}</div>
+    ${tabs.map(([, key]) =>
+      `<div id="ep_${a.id}_${key}" class="ep-body" style="${key!==firstKey?'display:none':''}">${esc(content[key])}</div>`
+    ).join('')}
+    <div class="ep-actions">
+      ${a.tailored_resume ? `
+        <button class="btn btn-ghost btn-xs" onclick="copyText('${a.id}','tailored')">📋 Copy</button>
+        <a class="btn btn-ghost btn-xs" href="/api/applications/${a.id}/download-resume?format=txt" download>⬇ TXT</a>
+        <a class="btn btn-ghost btn-xs" href="/api/applications/${a.id}/download-resume?format=docx" download>⬇ DOCX</a>
+      ` : ''}
+      ${a.cover_letter ? `<button class="btn btn-ghost btn-xs" onclick="copyText('${a.id}','cover')">📋 Copy Letter</button>` : ''}
+    </div>
+  </div>`;
+}
+
+function switchEpTab(id, key, btn) {
+  const row = document.getElementById('er_' + id);
+  row.querySelectorAll('.ep-tab').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  row.querySelectorAll('.ep-body').forEach(el => el.style.display = 'none');
+  const target = document.getElementById(`ep_${id}_${key}`);
+  if (target) target.style.display = '';
+}
+
+function toggleExpand(id) {
+  const er = document.getElementById('er_' + id);
+  if (!er) return;
+  const open = er.style.display !== 'none';
+  er.style.display = open ? 'none' : '';
+  const btn = document.getElementById('eb_' + id);
+  if (btn) btn.textContent = open ? '👁' : '🔼';
+}
+
+// Update row expand panel after import completes
+function updateJobRow(id) {
+  const job = jobsCache.find(j => j.id === id);
+  if (!job) return;
+  // Refresh expand panel if open
+  const er = document.getElementById('er_' + id);
+  if (er && er.style.display !== 'none') er.querySelector('td').innerHTML = buildExpand(job);
+  // Add tailored chip if missing
+  const jr = document.getElementById('jr_' + id);
+  if (jr) {
+    const statusTd = jr.querySelectorAll('td')[2];
+    if (statusTd && !statusTd.querySelector('.chip-tailored')) {
+      statusTd.insertAdjacentHTML('beforeend', '<br><span class="chip chip-tailored" style="margin-top:3px">✂️ tailored</span>');
+    }
+  }
+}
+
+// ══ TAILOR — just opens Resume Optimizer, no state change ═════════════════════
+async function tailorJob(id) {
+  const job = jobsCache.find(j => j.id === id) || await fetch('/api/applications/' + id).then(r => r.json()).catch(() => ({}));
+  const params = new URLSearchParams({
+    jt: job.job_title || '',
+    jd: (job.job_description || '').slice(0, 3000)
+  });
+  window.open('http://localhost:3001?' + params.toString(), '_blank');
+  addLog('info', '✂️ Resume Optimizer opened with job details. Optimize → return here → click Import Resume.');
+}
+
+// ══ IMPORT RESUME — opens file picker, uploads selected file ══════════════════
+let importTargetId = null;
+
+function importOptimized(id) {
+  importTargetId = id;
+  const fi = document.getElementById('importResumeFile');
+  fi.value = ''; // reset so same file can be re-selected
+  fi.click();
+}
+
+async function handleImportFile(input) {
+  const file = input.files[0];
+  if (!file || !importTargetId) return;
+
+  const ib = document.getElementById('ib_' + importTargetId);
+  if (ib) { ib.disabled = true; ib.textContent = '⏳ Uploading…'; }
+  addLog('info', `📥 Uploading "${file.name}" as resume for this job…`);
+
+  const form = new FormData();
+  form.append('resume', file);
+
+  const r = await fetch('/api/applications/' + importTargetId + '/upload-resume', {
+    method: 'POST', body: form
+  }).catch(() => null);
+
+  if (ib) { ib.disabled = false; ib.textContent = '📥 Import Resume'; }
+
+  if (!r || !r.ok) {
+    const err = r ? (await r.json().catch(() => ({}))).error : 'Network error';
+    toast('❌ ' + (err || 'Upload failed'), 'error');
+    return;
+  }
+
+  // Update cached job with new resume text
+  const data = await r.json();
+  const job = jobsCache.find(j => j.id === importTargetId);
+  if (job) job.tailored_resume = data.resume_text;
+  updateJobRow(importTargetId);
+  addLog('success', `✅ Resume imported from "${file.name}"`);
+  toast('✅ Resume imported! Click 📨 Apply when ready.', 'success');
+  importTargetId = null;
+}
+
+// ══ APPLY ═════════════════════════════════════════════════════════════════════
+async function openApply(id) {
+  applyJobId = id;
+  const a = jobsCache.find(j => j.id === id) || await fetch(`/api/applications/${id}`).then(r => r.json());
+  document.getElementById('am_title').textContent = a.job_title || 'Apply to Job';
+  document.getElementById('am_sub').textContent   = (a.company || '') + (a.location ? ' · ' + a.location : '');
+  document.getElementById('am_resume').value      = a.tailored_resume || '';
+  document.getElementById('am_cover').value       = a.cover_letter || '';
+  document.getElementById('am_resume_badge').textContent = a.tailored_resume ? '✂️ Tailored by AI' : '⚠️ Not tailored yet — tailor first for best results';
+  // Download links
+  const dlTxt  = document.getElementById('am_dl_txt');
+  const dlDocx = document.getElementById('am_dl_docx');
+  if (a.tailored_resume) {
+    dlTxt.href  = `/api/applications/${id}/download-resume?format=txt`;
+    dlDocx.href = `/api/applications/${id}/download-resume?format=docx`;
+    dlTxt.style.display  = '';
+    dlDocx.style.display = '';
+  } else {
+    dlTxt.style.display = dlDocx.style.display = 'none';
+  }
+  document.getElementById('applyModal').classList.add('open');
+}
+
+async function confirmApply() {
+  if (!applyJobId) return;
+  liEmail = document.getElementById('li_email').value.trim();
+  liPass  = document.getElementById('li_password').value;
+  if (!liEmail || !liPass) {
+    toast('❌ Enter LinkedIn credentials in the Run tab first', 'error');
+    document.getElementById('applyModal').classList.remove('open');
+    switchTab('run'); return;
+  }
+
+  // Save any edits to the resume/cover letter back to the application
+  const editedResume = document.getElementById('am_resume').value.trim();
+  const editedCover  = document.getElementById('am_cover').value.trim();
+  const job = jobsCache.find(j => j.id === applyJobId);
+  if (job) {
+    await fetch(`/api/applications/${applyJobId}`, {
+      method:'PATCH', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ ...job, tailored_resume: editedResume, cover_letter: editedCover })
+    });
+    job.tailored_resume = editedResume;
+    job.cover_letter = editedCover;
+  }
+
+  const confirmBtn = document.getElementById('am_confirm');
+  confirmBtn.disabled = true; confirmBtn.textContent = '⏳ Launching…';
+
+  const r = await fetch(`/api/applications/${applyJobId}/apply`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ linkedinEmail: liEmail, linkedinPassword: liPass })
+  });
+  const j = await r.json();
+
+  document.getElementById('applyModal').classList.remove('open');
+  confirmBtn.disabled = false; confirmBtn.textContent = '📨 Apply Now';
+  applyJobId = null;
+
+  if (r.ok) {
+    setBusy(true, 'Applying…');
+    addLog('info', `📨 Applying… browser window will open. Status updates when done.`);
+    toast('🚀 Apply started! Watch the browser. Status updates automatically.');
+  } else {
+    toast('❌ ' + j.error, 'error');
+  }
+}
+
+// ══ CLEAR ALL ═══════════════════════════════════════════════════════════════
+async function clearAll() {
+  if (!confirm('Clear all jobs from the dashboard? This cannot be undone.')) return;
+  await fetch('/api/applications', { method:'DELETE' });
+  jobsCache = [];
+  renderJobs();
+  loadStats();
+  addLog('info', '🗑 Dashboard cleared.');
+  toast('🗑 All jobs cleared');
+}
+
+// ══ DELETE SINGLE JOB ════════════════════════════════════════════════════════
+async function deleteJob(id) {
+  await fetch('/api/applications/' + id, { method: 'DELETE' });
+  jobsCache = jobsCache.filter(j => j.id !== id);
+  // Remove rows from DOM instantly
+  const jr = document.getElementById('jr_' + id);
+  const er = document.getElementById('er_' + id);
+  if (jr) jr.remove();
+  if (er) er.remove();
+  loadStats();
+}
+
+// ══ COPY ════════════════════════════════════════════════════════════════════
+function copyText(id, key) {
+  const el = document.getElementById(`ep_${id}_${key}`);
+  if (!el) return;
+  navigator.clipboard.writeText(el.textContent).then(() => toast('📋 Copied!'));
+}
+
+// ══ UTILS ════════════════════════════════════════════════════════════════════
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function toast(msg, type='success') {
+  const colors = { success:['#1a3326','#22c55e'], error:['#3b1212','#ef4444'], info:['#1a2c3b','#38bdf8'] };
+  const [bg, col] = colors[type] || colors.success;
+  const t = document.createElement('div');
+  t.style.cssText = `position:fixed;bottom:20px;right:20px;background:${bg};color:${col};border:1px solid ${col};padding:10px 16px;border-radius:7px;font-size:12px;font-weight:600;z-index:9999;animation:slideIn .2s ease;max-width:380px;line-height:1.4`;
+  t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 4000);
+}
+
+// Close apply modal on backdrop
+document.getElementById('applyModal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) { e.currentTarget.classList.remove('open'); applyJobId = null; }
+});
+</script>
+</body>
+</html>
