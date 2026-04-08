@@ -1,10 +1,9 @@
 {
   "name": "job-applier-ai",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "AI-powered automated job application agent using Claude + Playwright",
   "main": "server.js",
   "scripts": {
-    "postinstall": "PLAYWRIGHT_BROWSERS_PATH=/opt/render/project/src/playwright-browsers npx playwright install chromium && echo 'Chromium installed OK' || echo 'Chromium install FAILED'",
     "start": "node server.js",
     "dev": "node --watch server.js"
   },

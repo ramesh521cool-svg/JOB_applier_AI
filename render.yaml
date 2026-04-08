@@ -4,7 +4,7 @@ services:
     env: node
     region: oregon
     plan: free
-    buildCommand: npm install
+    buildCommand: npm install --ignore-scripts && npx playwright install chromium && cp -r /opt/render/.cache/ms-playwright /opt/render/project/src/playwright-browsers && echo "=== Browser copied to project dir ===" && ls /opt/render/project/src/playwright-browsers
     startCommand: node server.js
     envVars:
       - key: ANTHROPIC_API_KEY
