@@ -1,6 +1,6 @@
 {
   "name": "job-applier-ai",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "AI-powered automated job application agent using Claude + Playwright",
   "main": "server.js",
   "scripts": {

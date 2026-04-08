@@ -302,4 +302,29 @@ app.get("*", (req, res) => res.sendFile(path.join(__dirname, "public", "index.ht
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`✅ Job Applier AI running on http://localhost:${PORT}`);
   console.log(`🔑 Anthropic key: ${process.env.ANTHROPIC_API_KEY ? "loaded ✓" : "MISSING ✗"}`);
+
+  // Diagnose Playwright browser installation
+  const fs2 = require("fs");
+  const browsersPath = process.env.PLAYWRIGHT_BROWSERS_PATH || "(not set)";
+  console.log(`🌐 PLAYWRIGHT_BROWSERS_PATH = ${browsersPath}`);
+  console.log(`🌐 __dirname = ${__dirname}`);
+  if (browsersPath !== "(not set)" && fs2.existsSync(browsersPath)) {
+    const walk = (dir, depth = 0) => {
+      if (depth > 3) return;
+      try {
+        fs2.readdirSync(dir).forEach(f => {
+          console.log(`   ${"  ".repeat(depth)}${f}`);
+          const full = require("path").join(dir, f);
+          if (fs2.statSync(full).isDirectory()) walk(full, depth + 1);
+        });
+      } catch {}
+    };
+    console.log(`📂 Contents of ${browsersPath}:`);
+    walk(browsersPath);
+  } else {
+    console.log(`❌ Browser path does not exist: ${browsersPath}`);
+    // Show what IS in __dirname
+    console.log(`📂 Contents of project dir:`);
+    try { fs2.readdirSync(__dirname).forEach(f => console.log("  ", f)); } catch {}
+  }
 });
