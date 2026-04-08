@@ -49,16 +49,71 @@ const BROWSER_ARGS = [
   "--mute-audio",
 ];
 
+// Search recursively for a chromium executable under a directory
+function findExeUnder(dir, names, depth = 0) {
+  if (depth > 6 || !fs.existsSync(dir)) return null;
+  try {
+    for (const entry of fs.readdirSync(dir)) {
+      const full = path.join(dir, entry);
+      try {
+        const stat = fs.statSync(full);
+        if (stat.isFile() && names.includes(entry)) return full;
+        if (stat.isDirectory()) {
+          const found = findExeUnder(full, names, depth + 1);
+          if (found) return found;
+        }
+      } catch {}
+    }
+  } catch {}
+  return null;
+}
+
+// Dynamically locate the chromium executable across all known paths
+function resolveChromiumPath() {
+  const exeNames = ["chrome-headless-shell", "chrome", "chromium", "chromium-browser"];
+
+  const searchRoots = [
+    process.env.PLAYWRIGHT_BROWSERS_PATH,
+    path.join(__dirname, "playwright-browsers"),
+    "/opt/render/project/src/playwright-browsers",
+    process.env.HOME && path.join(process.env.HOME, ".cache", "ms-playwright"),
+    "/root/.cache/ms-playwright",
+    "/home/user/.cache/ms-playwright",
+  ].filter(Boolean);
+
+  console.log("[BROWSER] Searching for chromium in:", searchRoots);
+
+  for (const root of searchRoots) {
+    const found = findExeUnder(root, exeNames);
+    if (found) {
+      console.log("[BROWSER] Found chromium at:", found);
+      return found;
+    }
+  }
+
+  // System fallbacks
+  for (const systemPath of ["/usr/bin/chromium-browser", "/usr/bin/chromium", "/usr/bin/google-chrome"]) {
+    if (fs.existsSync(systemPath)) {
+      console.log("[BROWSER] Using system chromium:", systemPath);
+      return systemPath;
+    }
+  }
+
+  console.log("[BROWSER] No chromium found — letting Playwright use default");
+  return undefined;
+}
+
 async function launchBrowser() {
   if (IS_HEADLESS) {
-    // On Render / production: use regular launch (persistent profile is ephemeral anyway)
+    const executablePath = resolveChromiumPath();
     const browser = await chromium.launch({
       headless: true,
+      executablePath,
       args: BROWSER_ARGS,
     });
     return browser;
   } else {
-    // Local dev: use persistent context so LinkedIn stays logged in
+    // Local dev: persistent context so LinkedIn stays logged in
     return chromium.launchPersistentContext(BROWSER_PROFILE, {
       headless: false,
       args: ["--no-sandbox", "--disable-blink-features=AutomationControlled", "--disable-infobars"],
@@ -70,7 +125,6 @@ async function launchBrowser() {
 }
 
 async function getPage(ctx) {
-  // chromium.launch() returns a Browser; launchPersistentContext returns BrowserContext
   if (IS_HEADLESS) {
     const context = await ctx.newContext({
       userAgent:
