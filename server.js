@@ -1,10 +1,6 @@
 // Must be set BEFORE playwright is required anywhere
-if (process.env.NODE_ENV === "production" || process.env.HEADLESS === "true") {
-  const _path = require("path");
-  process.env.PLAYWRIGHT_BROWSERS_PATH =
-    process.env.PLAYWRIGHT_BROWSERS_PATH ||
-    _path.join(__dirname, "playwright-browsers");
-}
+const _path = require("path");
+process.env.PLAYWRIGHT_BROWSERS_PATH = _path.join(__dirname, "playwright-browsers");
 
 require("dotenv").config({ path: require("path").join(__dirname, ".env"), override: true });
 const express = require("express");

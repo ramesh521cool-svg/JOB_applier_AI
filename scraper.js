@@ -68,38 +68,42 @@ function findExeUnder(dir, names, depth = 0) {
   return null;
 }
 
-// Dynamically locate the chromium executable across all known paths
+// Resolve chromium executable — ask Playwright first, then search, then system fallbacks
 function resolveChromiumPath() {
-  const exeNames = ["chrome-headless-shell", "chrome", "chromium", "chromium-browser"];
+  // 1. Ask Playwright where it expects the browser (respects PLAYWRIGHT_BROWSERS_PATH)
+  try {
+    const expected = chromium.executablePath();
+    console.log("[BROWSER] Playwright expects chromium at:", expected);
+    if (fs.existsSync(expected)) {
+      console.log("[BROWSER] ✅ Found at expected path");
+      return expected;
+    }
+    console.log("[BROWSER] ❌ Not found at expected path");
+  } catch (e) {
+    console.log("[BROWSER] executablePath() error:", e.message);
+  }
 
+  // 2. Search manually across all known locations
+  const exeNames = ["chrome-headless-shell", "chrome", "chromium", "chromium-browser"];
   const searchRoots = [
-    process.env.PLAYWRIGHT_BROWSERS_PATH,
     path.join(__dirname, "playwright-browsers"),
     "/opt/render/project/src/playwright-browsers",
     process.env.HOME && path.join(process.env.HOME, ".cache", "ms-playwright"),
     "/root/.cache/ms-playwright",
-    "/home/user/.cache/ms-playwright",
+    "/opt/render/.cache/ms-playwright",
   ].filter(Boolean);
-
-  console.log("[BROWSER] Searching for chromium in:", searchRoots);
 
   for (const root of searchRoots) {
     const found = findExeUnder(root, exeNames);
-    if (found) {
-      console.log("[BROWSER] Found chromium at:", found);
-      return found;
-    }
+    if (found) { console.log("[BROWSER] Found via search:", found); return found; }
   }
 
-  // System fallbacks
-  for (const systemPath of ["/usr/bin/chromium-browser", "/usr/bin/chromium", "/usr/bin/google-chrome"]) {
-    if (fs.existsSync(systemPath)) {
-      console.log("[BROWSER] Using system chromium:", systemPath);
-      return systemPath;
-    }
+  // 3. System chromium
+  for (const p of ["/usr/bin/chromium-browser", "/usr/bin/chromium", "/usr/bin/google-chrome"]) {
+    if (fs.existsSync(p)) { console.log("[BROWSER] Using system chromium:", p); return p; }
   }
 
-  console.log("[BROWSER] No chromium found — letting Playwright use default");
+  console.log("[BROWSER] ❌ No chromium found anywhere — Playwright will use its default");
   return undefined;
 }
 

@@ -4,7 +4,13 @@ services:
     env: node
     region: oregon
     plan: free
-    buildCommand: npm install && PLAYWRIGHT_BROWSERS_PATH=./playwright-browsers npx playwright install --with-deps chromium
+    buildCommand: >-
+      npm install &&
+      npx playwright install-deps chromium || true &&
+      PLAYWRIGHT_BROWSERS_PATH=/opt/render/project/src/playwright-browsers
+      npx playwright install chromium &&
+      echo "=== Browser install done ===" &&
+      ls /opt/render/project/src/playwright-browsers
     startCommand: node server.js
     envVars:
       - key: ANTHROPIC_API_KEY
