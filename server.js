@@ -1,6 +1,4 @@
-// Must be set BEFORE playwright is required anywhere
-const _path = require("path");
-process.env.PLAYWRIGHT_BROWSERS_PATH = _path.join(__dirname, "playwright-browsers");
+// No PLAYWRIGHT_BROWSERS_PATH override — use playwright's default location
 
 require("dotenv").config({ path: require("path").join(__dirname, ".env"), override: true });
 const express = require("express");
