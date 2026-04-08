@@ -1,9 +1,10 @@
 {
   "name": "job-applier-ai",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "AI-powered automated job application agent using Claude + Playwright",
   "main": "server.js",
   "scripts": {
+    "postinstall": "npx playwright install chromium && cp -r /opt/render/.cache/ms-playwright ./playwright-browsers 2>/dev/null || true",
     "start": "node server.js",
     "dev": "node --watch server.js"
   },
