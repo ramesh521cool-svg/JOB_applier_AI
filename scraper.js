@@ -176,8 +176,31 @@ async function loginLinkedIn(page, email, password) {
   }
 }
 
-async function ensureLoggedIn(page, email, password, sessionId) {
-  // Navigate to feed and check where we land
+async function ensureLoggedIn(page, email, password, sessionId, cookie) {
+  // Cookie-based auth (recommended — bypasses bot detection & verification)
+  if (cookie && cookie.trim()) {
+    log(sessionId, "info", "🍪 Using li_at session cookie to authenticate...");
+    await page.context().addCookies([{
+      name: "li_at",
+      value: cookie.trim(),
+      domain: ".linkedin.com",
+      path: "/",
+      httpOnly: true,
+      secure: true,
+    }]);
+    try {
+      await page.goto("https://www.linkedin.com/feed/", { waitUntil: "domcontentloaded", timeout: 20000 });
+    } catch {}
+    await page.waitForTimeout(2000);
+    const url = page.url();
+    if (!url.includes("/login") && !url.includes("/authwall") && !url.includes("/uas/")) {
+      log(sessionId, "success", "✅ Signed in via session cookie");
+      return;
+    }
+    log(sessionId, "warn", "⚠️ Cookie auth failed — cookie may be expired. Trying email/password...");
+  }
+
+  // Email/password auth
   try {
     await page.goto("https://www.linkedin.com/feed/", { waitUntil: "domcontentloaded", timeout: 20000 });
   } catch {
@@ -186,7 +209,6 @@ async function ensureLoggedIn(page, email, password, sessionId) {
   await page.waitForTimeout(3000);
 
   const url = page.url();
-  // If we landed on login/authwall — not logged in
   const needsLogin = url.includes("/login") || url.includes("/authwall") || url.includes("/uas/") || url.includes("/checkpoint");
 
   if (!needsLogin) {
@@ -194,12 +216,16 @@ async function ensureLoggedIn(page, email, password, sessionId) {
     return;
   }
 
-  log(sessionId, "info", "🔐 Logging into LinkedIn...");
+  if (!email || !password) {
+    throw new Error("Not logged in. Please provide your li_at cookie (recommended) or LinkedIn email+password in the Run tab.");
+  }
+
+  log(sessionId, "info", "🔐 Logging in with email/password...");
   await loginLinkedIn(page, email, password);
 
   const afterUrl = page.url();
   if (afterUrl.includes("/login") || afterUrl.includes("/authwall")) {
-    throw new Error("Login failed — please check your LinkedIn email and password.");
+    throw new Error("Login failed — check your LinkedIn credentials or use the li_at cookie instead.");
   }
   log(sessionId, "success", "✅ Logged in to LinkedIn");
 }
@@ -520,7 +546,7 @@ async function applyToJob(page, jobUrl, tailoredResume, coverLetter, profile, se
 // ============================================================
 // NEW: Search-only mode — finds jobs, stores as "found"
 // ============================================================
-async function searchJobs(sessionId, profile, prefs, email, password) {
+async function searchJobs(sessionId, profile, prefs, email, password, cookie) {
   if (running) throw new Error("A browser session is already running");
   running = true;
 
@@ -531,7 +557,7 @@ async function searchJobs(sessionId, profile, prefs, email, password) {
     activeBrowser = await launchBrowser();
     activePage    = await getPage(activeBrowser);
 
-    await ensureLoggedIn(activePage, email, password, sessionId);
+    await ensureLoggedIn(activePage, email, password, sessionId, cookie);
 
     const jobTitles         = JSON.parse(prefs.job_titles || "[]");
     const blacklistCompanies = new Set(JSON.parse(prefs.blacklist_companies || "[]").map(c => c.toLowerCase()));
@@ -605,7 +631,7 @@ async function searchJobs(sessionId, profile, prefs, email, password) {
 // ============================================================
 // Apply to a single job — navigates directly to the job page
 // ============================================================
-async function applyToSingleJob(sessionId, application, profile, email, password) {
+async function applyToSingleJob(sessionId, application, profile, email, password, cookie) {
   if (running) throw new Error("A browser session is already running");
   running = true;
 
@@ -619,6 +645,14 @@ async function applyToSingleJob(sessionId, application, profile, email, password
 
     activeBrowser = await launchBrowser();
     activePage    = await getPage(activeBrowser);
+
+    // Inject cookie before any navigation if provided
+    if (cookie && cookie.trim()) {
+      await activePage.context().addCookies([{
+        name: "li_at", value: cookie.trim(),
+        domain: ".linkedin.com", path: "/", httpOnly: true, secure: true,
+      }]);
+    }
 
     // ── Step 1: Navigate directly to the job page ──────────────────
     log(sessionId, "info", `🌐 Navigating to job page...`);

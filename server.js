@@ -125,15 +125,16 @@ app.post("/api/session/stop", async (req, res) => {
 // ── Search jobs (LinkedIn scrape, no apply) ───────────────────────────────────
 app.post("/api/session/search", async (req, res) => {
   if (scraper.isRunning()) return res.status(409).json({ error: "A session is already running" });
-  const { linkedinEmail, linkedinPassword } = req.body;
-  if (!linkedinEmail || !linkedinPassword) return res.status(400).json({ error: "LinkedIn credentials required" });
+  const { linkedinEmail, linkedinPassword, linkedinCookie } = req.body;
+  if (!linkedinCookie && (!linkedinEmail || !linkedinPassword))
+    return res.status(400).json({ error: "Provide your li_at session cookie (recommended) or LinkedIn email+password" });
   const prefs  = getPrefs();
   const titles = JSON.parse(prefs.job_titles || "[]");
   if (!titles.length) return res.status(400).json({ error: "Add job titles to your preferences first" });
   const sessionId = uuidv4();
   createSession(sessionId);
   res.json({ sessionId });
-  scraper.searchJobs(sessionId, getProfile(), prefs, linkedinEmail, linkedinPassword)
+  scraper.searchJobs(sessionId, getProfile(), prefs, linkedinEmail, linkedinPassword, linkedinCookie)
     .catch(err => console.error("Search crashed:", err));
 });
 
@@ -281,13 +282,14 @@ app.post("/api/applications/:id/save-from-optimized", async (req, res) => {
 // ── Apply to a single job ─────────────────────────────────────────────────────
 app.post("/api/applications/:id/apply", async (req, res) => {
   if (scraper.isRunning()) return res.status(409).json({ error: "A browser session is already running" });
-  const { linkedinEmail, linkedinPassword } = req.body;
-  if (!linkedinEmail || !linkedinPassword) return res.status(400).json({ error: "LinkedIn credentials required" });
+  const { linkedinEmail, linkedinPassword, linkedinCookie } = req.body;
+  if (!linkedinCookie && (!linkedinEmail || !linkedinPassword))
+    return res.status(400).json({ error: "Provide your li_at session cookie or LinkedIn email+password" });
   const jobApp = getApplication(req.params.id);
   if (!jobApp) return res.status(404).json({ error: "Job not found" });
   const sessionId = uuidv4();
   res.json({ sessionId });
-  scraper.applyToSingleJob(sessionId, jobApp, getProfile(), linkedinEmail, linkedinPassword)
+  scraper.applyToSingleJob(sessionId, jobApp, getProfile(), linkedinEmail, linkedinPassword, linkedinCookie)
     .catch(err => console.error("Apply crashed:", err));
 });
 

@@ -246,17 +246,30 @@ table.jt tr.expand-row td{padding:0;border-bottom:1px solid var(--border)}
   <!-- RUN -->
   <div class="tc" id="tc-run">
     <div class="cred-box">
-      <div class="sec-title" style="margin-bottom:8px">🔐 LinkedIn Login</div>
+      <div class="sec-title" style="margin-bottom:8px">🔐 LinkedIn Auth</div>
+
+      <!-- Cookie auth (recommended for cloud/Render) -->
+      <div class="ig">
+        <label class="lbl">Session Cookie <span style="color:var(--green);font-weight:700">(Recommended)</span></label>
+        <input id="li_cookie" type="password" placeholder="Paste your li_at cookie value"/>
+        <div style="font-size:10px;color:var(--muted);margin-top:4px;line-height:1.5">
+          Get it: open <b>linkedin.com</b> → F12 → Application → Cookies → copy <b>li_at</b> value
+        </div>
+      </div>
+
+      <div style="text-align:center;font-size:10px;color:var(--muted);margin:8px 0">— or use email/password —</div>
+
       <div class="ig"><label class="lbl">Email</label><input id="li_email" type="email" placeholder="you@email.com"/></div>
       <div class="ig"><label class="lbl">Password</label><input id="li_password" type="password" placeholder="••••••••"/></div>
-      <div class="warn">⚠️ Only used in memory — never stored.</div>
+      <div class="warn">⚠️ Credentials used in memory only — never stored.</div>
     </div>
     <div style="background:var(--s2);border-radius:7px;padding:11px;margin-bottom:12px;font-size:11px;line-height:1.8;color:var(--muted)">
       <b style="color:var(--text)">How it works:</b><br/>
-      1. <b>Search Jobs</b> → opens browser, finds matching jobs<br/>
+      1. <b>Search Jobs</b> → headless browser finds matching jobs<br/>
       2. <b>Tailor</b> button → Claude rewrites resume for the job<br/>
       3. <b>Apply</b> button → browser submits LinkedIn Easy Apply<br/>
-      4. Status updates only after apply completes
+      4. Status updates automatically after apply completes<br/>
+      <span style="color:var(--accent)">ℹ️ On cloud: browser runs headless (no window). Check logs.</span>
     </div>
     <button class="btn btn-primary btn-full" id="searchBtn" onclick="startSearch()">🔍 Search Jobs</button>
     <button class="btn btn-red btn-full" id="stopBtn" style="display:none;margin-top:6px" onclick="stopSession()">⏹ Stop</button>
@@ -461,10 +474,11 @@ function handleTag(e, key) {
 async function startSearch() {
   liEmail = document.getElementById('li_email').value.trim();
   liPass  = document.getElementById('li_password').value;
-  if (!liEmail || !liPass) { toast('❌ Enter LinkedIn credentials in the Run tab', 'error'); switchTab('run'); return; }
+  const liCookie = document.getElementById('li_cookie').value.trim();
+  if (!liCookie && (!liEmail || !liPass)) { toast('❌ Paste your li_at cookie (or enter email+password) in the Run tab', 'error'); switchTab('run'); return; }
   const r = await fetch('/api/session/search', {
     method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ linkedinEmail: liEmail, linkedinPassword: liPass })
+    body: JSON.stringify({ linkedinEmail: liEmail, linkedinPassword: liPass, linkedinCookie: liCookie })
   });
   const j = await r.json();
   if (r.ok) {
@@ -815,7 +829,7 @@ async function confirmApply() {
 
   const r = await fetch(`/api/applications/${applyJobId}/apply`, {
     method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ linkedinEmail: liEmail, linkedinPassword: liPass })
+    body: JSON.stringify({ linkedinEmail: liEmail, linkedinPassword: liPass, linkedinCookie: document.getElementById('li_cookie').value.trim() })
   });
   const j = await r.json();
 
